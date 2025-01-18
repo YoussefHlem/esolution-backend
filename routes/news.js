@@ -8,6 +8,9 @@ const multer = require('multer');
 const path = require('path');
 const moment = require('moment');
 
+require('dotenv').config();
+const URL = process.env.URL;
+
 // Configure multer for image upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -68,12 +71,15 @@ router.post('/', [authMiddleware, adminMiddleware, upload.single('image')], asyn
   try {
     const { title, description, body } = req.body;
     const sanitizedBody = xss(body);  // Sanitize the body
+    
+    const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : '';
+    const imageUrl = `${URL || "http://localhost:5000"}/${imagePath}`;
 
     const news = new News({
       title,
       description,
       body: sanitizedBody,
-      image: req.file ? req.file.path : '',
+      image: req.file ? imageUrl : '',
       createdFrom: new Date()
     });
 
@@ -87,25 +93,29 @@ router.post('/', [authMiddleware, adminMiddleware, upload.single('image')], asyn
 // Update News (Admin Only)
 router.put('/:id', [authMiddleware, adminMiddleware, upload.single('image')], async (req, res) => {
   try {
-    const { title, description, body } = req.body;
-    const sanitizedBody = xss(body);  // Sanitize the body
+      const { title, description, body } = req.body;
+      const sanitizedBody = xss(body); // Sanitize the body
 
-    const updateData = { title, description, body: sanitizedBody };
-    if (req.file) {
-      updateData.image = req.file.path;
-    }
+      const updateData = { title, description, body: sanitizedBody };
 
-    const news = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
+      if (req.file) {
+          const imagePath = req.file.path.replace(/\\/g, '/'); // Normalize path
+          const imageUrl = `${process.env.URL || "http://localhost:5000"}/${imagePath}`; // Construct URL
+          updateData.image = imageUrl;
+      }
 
-    if (!news) {
-      return res.status(404).json({ message: 'News not found' });
-    }
+      const news = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
 
-    res.json(news);
+      if (!news) {
+          return res.status(404).json({ message: 'News not found' });
+      }
+
+      res.json(news);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error.message });
   }
 });
+
 
 // Delete News (Admin Only)
 router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {

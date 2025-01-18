@@ -5,10 +5,14 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 
+require('dotenv').config();
+
+const URL = process.env.URL;
+
 // Configure multer for PDF upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/downloads/');
+    cb(null, `uploads/downloads/`);
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -22,7 +26,7 @@ router.get('/', [authMiddleware], async (req, res) => {
     const downloads = await Download.find();
     res.json(downloads);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message + "test" });
   }
 });
 
@@ -45,10 +49,14 @@ router.get('/:id', [authMiddleware], async (req, res) => {
 router.post('/', [authMiddleware, adminMiddleware, upload.single('pdf')], async (req, res) => {
   try {
     const { title, description } = req.body;
+
+    const pdfPath = req.file ? req.file.path.replace(/\\/g, '/') : '';
+    const pdfUrl = `${URL || "http://localhost:5000"}/${pdfPath}`;
+
     const download = new Download({
       title,
       description,
-      pdfAttachment: req.file ? req.file.path : ''
+      pdfAttachment: req.file ? pdfUrl : ''
     });
     await download.save();
     res.status(201).json(download);
@@ -60,24 +68,27 @@ router.post('/', [authMiddleware, adminMiddleware, upload.single('pdf')], async 
 // Update Download (Admin Only)
 router.put('/:id', [authMiddleware, adminMiddleware, upload.single('pdf')], async (req, res) => {
   try {
-    const { title, description } = req.body;
-    const updateData = { title, description };
+      const { title, description } = req.body;
+      const updateData = { title, description };
 
-    if (req.file) {
-      updateData.pdfAttachment = req.file.path;
-    }
+      if (req.file) {
+          const pdfPath = req.file.path.replace(/\\/g, '/'); // Normalize path
+          const pdfUrl = `${process.env.URL || "http://localhost:5000"}/${pdfPath}`; // Construct URL
+          updateData.pdfAttachment = pdfUrl;
+      }
 
-    const download = await Download.findByIdAndUpdate(req.params.id, updateData, { new: true });
+      const download = await Download.findByIdAndUpdate(req.params.id, updateData, { new: true });
 
-    if (!download) {
-      return res.status(404).json({ message: 'Download not found' });
-    }
+      if (!download) {
+          return res.status(404).json({ message: 'Download not found' });
+      }
 
-    res.json(download);
+      res.json(download);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error.message });
   }
 });
+
 
 // Delete Download (Admin Only)
 router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
