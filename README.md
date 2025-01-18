@@ -28,6 +28,7 @@ MONGODB_URI=mongodb://localhost:27017/esolution
 JWT_SECRET=your_secret_key
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin_password
+URL=
 ```
 
 ## Running the Server
