@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Get All Downloads
-router.get('/', [authMiddleware], async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const downloads = await Download.find();
     res.json(downloads);
