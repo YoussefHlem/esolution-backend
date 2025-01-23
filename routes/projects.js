@@ -2,23 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Project = require('../models/Project');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
-const multer = require('multer');
-const path = require('path');
+const {uploadMiddleware, getFileByName} = require("../utils/upload");
+
 
 require('dotenv').config();
 
-const URL = process.env.URL;
 
-// Configure multer for image upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/projects/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storage });
 
 // Get All Projects
 router.get('/', async (req, res) => {
@@ -46,11 +35,11 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create Project (Admin Only)
-router.post('/', [authMiddleware, adminMiddleware, upload.single('image')], async (req, res) => {
+router.post('/', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
     const { title, description } = req.body;
-    const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : '';
-    const imageUrl = `${URL || "http://localhost:5000"}/${imagePath}`;
+      const imageUrl = req.filename ? `${process.env.URL}/projects/file/${req.filename}` : '';
+
     
     const project = new Project({
       title,
@@ -63,17 +52,22 @@ router.post('/', [authMiddleware, adminMiddleware, upload.single('image')], asyn
     res.status(400).json({ message: error.message });
   }
 });
-
+router.get('/file/:filename', async (req, res) => {
+    try {
+        const file = await getFileByName(req.params.filename);
+        res.send(file);
+    } catch (error) {
+        res.status(404).json({ message: 'File not found' });
+    }
+});
 // Update Project (Admin Only)
-router.put('/:id', [authMiddleware, adminMiddleware, upload.single('image')], async (req, res) => {
+router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
       const { title, description } = req.body;
       const updateData = { title, description };
 
       if (req.file) {
-          const imagePath = req.file.path.replace(/\\/g, '/'); // Normalize path
-          const imageUrl = `${process.env.URL || "http://localhost:5000"}/${imagePath}`; // Construct URL
-          updateData.image = imageUrl;
+          updateData.image = req.filename ? `${process.env.URL}/projects/file/${req.filename}` : '';
       }
 
       const project = await Project.findByIdAndUpdate(req.params.id, updateData, { new: true });

@@ -4,23 +4,11 @@ const xss = require('xss');
 const router = express.Router();
 const News = require('../models/News');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
-const multer = require('multer');
-const path = require('path');
+
 const moment = require('moment');
+const {uploadMiddleware, getFileByName} = require("../utils/upload");
 
 require('dotenv').config();
-const URL = process.env.URL;
-
-// Configure multer for image upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/news/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storage });
 
 // Get All News
 router.get('/', async (req, res) => {
@@ -31,7 +19,14 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
+router.get('/file/:filename', async (req, res) => {
+    try {
+        const file = await getFileByName(req.params.filename);
+        res.send(file);
+    } catch (error) {
+        res.status(404).json({ message: 'File not found' });
+    }
+});
 // Get Latest News
 router.get('/latest', async (req, res) => {
   try {
@@ -67,13 +62,13 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create News (Admin Only)
-router.post('/', [authMiddleware, adminMiddleware, upload.single('image')], async (req, res) => {
+router.post('/', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
     const { title, description, body } = req.body;
     const sanitizedBody = xss(body);  // Sanitize the body
-    
-    const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : '';
-    const imageUrl = `${URL || "http://localhost:5000"}/${imagePath}`;
+
+      const imageUrl = req.filename ? `${process.env.URL}/news/file/${req.filename}` : '';
+
 
     const news = new News({
       title,
@@ -91,7 +86,7 @@ router.post('/', [authMiddleware, adminMiddleware, upload.single('image')], asyn
 });
 
 // Update News (Admin Only)
-router.put('/:id', [authMiddleware, adminMiddleware, upload.single('image')], async (req, res) => {
+router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
       const { title, description, body } = req.body;
       const sanitizedBody = xss(body); // Sanitize the body
@@ -99,9 +94,7 @@ router.put('/:id', [authMiddleware, adminMiddleware, upload.single('image')], as
       const updateData = { title, description, body: sanitizedBody };
 
       if (req.file) {
-          const imagePath = req.file.path.replace(/\\/g, '/'); // Normalize path
-          const imageUrl = `${process.env.URL || "http://localhost:5000"}/${imagePath}`; // Construct URL
-          updateData.image = imageUrl;
+          updateData.image = req.filename ? `${process.env.URL}/news/file/${req.filename}` : '';
       }
 
       const news = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });

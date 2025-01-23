@@ -2,23 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Download = require('../models/Download');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
-const multer = require('multer');
-const path = require('path');
+const {uploadMiddleware, getFileByName} = require("../utils/upload");
 
 require('dotenv').config();
 
-const URL = process.env.URL;
-
-// Configure multer for PDF upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, `uploads/downloads/`);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storage });
 
 // Get All Downloads
 router.get('/', async (req, res) => {
@@ -46,12 +33,11 @@ router.get('/:id', [authMiddleware], async (req, res) => {
 });
 
 // Create Download (Admin Only)
-router.post('/', [authMiddleware, adminMiddleware, upload.single('pdf')], async (req, res) => {
+router.post('/', [authMiddleware, adminMiddleware, uploadMiddleware('pdf')], async (req, res) => {
   try {
     const { title, description } = req.body;
 
-    const pdfPath = req.file ? req.file.path.replace(/\\/g, '/') : '';
-    const pdfUrl = `${URL || "http://localhost:5000"}/${pdfPath}`;
+      const pdfUrl = req.filename ? `${process.env.URL}/downloads/file/${req.filename}` : '';
 
     const download = new Download({
       title,
@@ -65,16 +51,22 @@ router.post('/', [authMiddleware, adminMiddleware, upload.single('pdf')], async 
   }
 });
 
+router.get('/file/:filename', async (req, res) => {
+    try {
+        const file = await getFileByName(req.params.filename);
+        res.send(file);
+    } catch (error) {
+        res.status(404).json({ message: 'File not found' });
+    }
+});
 // Update Download (Admin Only)
-router.put('/:id', [authMiddleware, adminMiddleware, upload.single('pdf')], async (req, res) => {
+router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('pdf')], async (req, res) => {
   try {
       const { title, description } = req.body;
       const updateData = { title, description };
 
       if (req.file) {
-          const pdfPath = req.file.path.replace(/\\/g, '/'); // Normalize path
-          const pdfUrl = `${process.env.URL || "http://localhost:5000"}/${pdfPath}`; // Construct URL
-          updateData.pdfAttachment = pdfUrl;
+          updateData.pdfAttachment = req.filename ? `${process.env.URL}/downloads/file/${req.filename}` : '';
       }
 
       const download = await Download.findByIdAndUpdate(req.params.id, updateData, { new: true });
