@@ -13,8 +13,7 @@ conn.once('open', () => {
 
 // Configure storage
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
+const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50 MB limit
 // File upload middleware
 const uploadMiddleware = (fieldName) => async (req, res, next) => {
 	upload.single(fieldName)(req, res, async (err) => {
