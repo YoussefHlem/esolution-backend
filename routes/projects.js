@@ -1,4 +1,5 @@
 const express = require('express');
+const xss = require('xss');
 const router = express.Router();
 const Project = require('../models/Project');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
@@ -37,13 +38,15 @@ router.get('/:id', async (req, res) => {
 // Create Project (Admin Only)
 router.post('/', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
-    const { title, description } = req.body;
-      const imageUrl = req.filename ? `${process.env.URL}/projects/file/${req.filename}` : '';
+    const { title, description, body } = req.body;
+    const sanitizedBody = xss(body);  // Sanitize the body
+    const imageUrl = req.filename ? `${process.env.URL}/projects/file/${req.filename}` : '';
 
-    
+
     const project = new Project({
       title,
       description,
+      body: sanitizedBody,
       image: imageUrl
     });
     await project.save();
@@ -63,8 +66,9 @@ router.get('/file/:filename', async (req, res) => {
 // Update Project (Admin Only)
 router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
-      const { title, description } = req.body;
-      const updateData = { title, description };
+      const { title, description, body } = req.body;
+      const sanitizedBody = xss(body);  // Sanitize the body
+      const updateData = { title, description, body: sanitizedBody };
 
       if (req.file) {
           updateData.image = req.filename ? `${process.env.URL}/projects/file/${req.filename}` : '';
@@ -87,7 +91,7 @@ router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('image')],
 router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
-    
+
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }

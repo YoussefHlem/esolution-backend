@@ -28,6 +28,7 @@ app.use('/api/projects', require('./routes/projects'));
 app.use('/api/downloads', require('./routes/downloads'));
 app.use('/api/equipments', require('./routes/equipments'));
 app.use('/api/news', require('./routes/news'));
+app.use('/api/blogs', require('./routes/blogs'));
 
 // Create upload directories
 const fs = require('fs');
@@ -35,7 +36,8 @@ const uploadDirs = [
   'uploads/projects',
   'uploads/downloads',
   'uploads/equipments',
-  'uploads/news'
+  'uploads/news',
+  'uploads/blogs'
 ];
 
 uploadDirs.forEach(dir => {
