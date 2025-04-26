@@ -50,7 +50,7 @@ router.get('/latest', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const news = await News.findById(req.params.id);
-    
+
     if (!news) {
       return res.status(404).json({ message: 'News not found' });
     }
@@ -64,18 +64,26 @@ router.get('/:id', async (req, res) => {
 // Create News (Admin Only)
 router.post('/', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
-    const { title, description, body } = req.body;
+    const { title, description, body, createdFrom } = req.body;
     const sanitizedBody = xss(body);  // Sanitize the body
 
       const imageUrl = req.filename ? `${process.env.URL}/news/file/${req.filename}` : '';
 
+    // Validate createdFrom if provided
+    let createdFromDate = new Date();
+    if (createdFrom) {
+      const parsedDate = new Date(createdFrom);
+      if (!isNaN(parsedDate.getTime())) {
+        createdFromDate = parsedDate;
+      }
+    }
 
     const news = new News({
       title,
       description,
       body: sanitizedBody,
       image: req.file ? imageUrl : '',
-      createdFrom: new Date()
+      createdFrom: createdFromDate
     });
 
     await news.save();
@@ -88,10 +96,24 @@ router.post('/', [authMiddleware, adminMiddleware, uploadMiddleware('image')], a
 // Update News (Admin Only)
 router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('image')], async (req, res) => {
   try {
-      const { title, description, body } = req.body;
+      const { title, description, body, createdFrom } = req.body;
       const sanitizedBody = xss(body); // Sanitize the body
 
-      const updateData = { title, description, body: sanitizedBody };
+      // Validate createdFrom if provided
+      let createdFromDate = new Date();
+      if (createdFrom) {
+        const parsedDate = new Date(createdFrom);
+        if (!isNaN(parsedDate.getTime())) {
+          createdFromDate = parsedDate;
+        }
+      }
+
+      const updateData = { 
+          title, 
+          description, 
+          body: sanitizedBody,
+          createdFrom: createdFromDate
+      };
 
       if (req.file) {
           updateData.image = req.filename ? `${process.env.URL}/news/file/${req.filename}` : '';
@@ -114,7 +136,7 @@ router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('image')],
 router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
     const news = await News.findByIdAndDelete(req.params.id);
-    
+
     if (!news) {
       return res.status(404).json({ message: 'News not found' });
     }
