@@ -13,7 +13,7 @@ require('dotenv').config();
 // Get All News
 router.get('/', async (req, res) => {
   try {
-    const news = await News.find().sort({ createdAt: -1 });
+    const news = await News.find().sort({ createdFrom: -1 });
     res.json(news);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,7 +31,7 @@ router.get('/file/:filename', async (req, res) => {
 router.get('/latest', async (req, res) => {
   try {
     const news = await News.find()
-      .sort({ createdAt: -1 })
+      .sort({ createdFrom: -1 })
       .limit(5)
       .select('title description createdAt id');
 
