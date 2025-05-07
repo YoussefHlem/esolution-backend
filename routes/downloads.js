@@ -35,13 +35,14 @@ router.get('/:id', [authMiddleware], async (req, res) => {
 // Create Download (Admin Only)
 router.post('/', [authMiddleware, adminMiddleware, uploadMiddleware('pdf')], async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, tag } = req.body;
 
       const pdfUrl = req.filename ? `${process.env.URL}/downloads/file/${req.filename}` : '';
 
     const download = new Download({
       title,
       description,
+      tag,
       pdfAttachment: req.file ? pdfUrl : ''
     });
     await download.save();
@@ -62,8 +63,8 @@ router.get('/file/:filename', async (req, res) => {
 // Update Download (Admin Only)
 router.put('/:id', [authMiddleware, adminMiddleware, uploadMiddleware('pdf')], async (req, res) => {
   try {
-      const { title, description } = req.body;
-      const updateData = { title, description };
+      const { title, description, tag } = req.body;
+      const updateData = { title, description, tag };
 
       if (req.file) {
           updateData.pdfAttachment = req.filename ? `${process.env.URL}/downloads/file/${req.filename}` : '';
